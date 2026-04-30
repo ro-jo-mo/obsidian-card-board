@@ -496,27 +496,37 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        ghost : Html Msg
+        ghost =
+            cardGhostView (toSession model)
+    in
     case model of
         AddingTask taskText column session ->
             Html.div []
                 [ boardsView session
                 , modalAddTask taskText column session
+                , ghost
                 ]
 
         ViewingBoard session ->
             Html.div []
-                [ boardsView session ]
+                [ boardsView session
+                , ghost
+                ]
 
         DeletingCard title cardId session ->
             Html.div []
                 [ boardsView session
                 , modalDeleteCardConfirm title cardId
+                , ghost
                 ]
 
         EditingCardDueDate datePicker taskItem session ->
             Html.div []
                 [ boardsView session
                 , modalEditCardDueDate datePicker taskItem session
+                , ghost
                 ]
 
 
@@ -765,6 +775,44 @@ modalAddTask taskText column _ =
                 ]
             ]
         ]
+
+
+cardGhostView : Session -> Html Msg
+cardGhostView session =
+    let
+        dragTracker : DragTracker
+        dragTracker =
+            Session.dragTracker session
+    in
+    case dragTracker of
+        DragTracker.Dragging clientData domData ->
+            if domData.dragType /= cardDragType then
+                empty
+
+            else
+                case Session.taskFromId clientData.uniqueId session of
+                    Nothing ->
+                        empty
+
+                    Just taskItem ->
+                        Html.li
+                            [ class "card-board-card cm-s-obsidian card-board-card-ghost"
+                            , style "position" "fixed"
+                            , style "left" (String.fromFloat (clientData.clientPos.x - domData.offset.x - clientData.offsetPos.x) ++ "px")
+                            , style "top" (String.fromFloat (clientData.clientPos.y - domData.offset.y - clientData.offsetPos.y) ++ "px")
+                            , style "width" (String.fromFloat domData.draggedNodeStartRect.width ++ "px")
+                            , style "pointer-events" "none"
+                            ]
+                            [ Html.div [ class "card-board-card-highlight-area" ] []
+                            , Html.div [ class "card-board-card-drag-handle" ] []
+                            , Html.div [ class "card-board-card-content-area" ]
+                                [ Html.div [ class "card-board-card-title card-board-card-title-ghost" ]
+                                    [ Html.text (TaskItem.title taskItem) ]
+                                ]
+                            ]
+
+        _ ->
+            empty
 
 
 boardsView : Session -> Html Msg
@@ -1180,7 +1228,8 @@ cardView today card =
                     ""
     in
     Html.li
-        [ class "card-board-card cm-s-obsidian"
+        [ id ("card-drag:" ++ cardId)
+        , class "card-board-card cm-s-obsidian"
         , attributeIf (not <| String.isEmpty dataTags) (attribute "data-tags" dataTags)
         , nonPropogatingOnDown <| always CardMouseDown
         , onContextMenu <| CardRightMouseDown (Card.id card)
@@ -1192,7 +1241,7 @@ cardView today card =
             , nonPropogatingOnDown <|
                 \e ->
                     CardDragStart
-                        ( cardId
+                        ( "card-drag:" ++ cardId
                         , { uniqueId = taskItemId
                           , clientPos = Coords.fromFloatTuple e.clientPos
                           , offsetPos = Coords.fromFloatTuple e.offsetPos

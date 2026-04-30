@@ -817,3 +817,11 @@ h3.setting-heading-compact {
 .card-board-card:hover .card-board-card-drag-handle {
   opacity: 1;
 }
+
+.card-board-card-ghost {
+  opacity: 0.75;
+  z-index: 1000;
+  cursor: grabbing;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  list-style: none;
+}
